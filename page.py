@@ -120,6 +120,9 @@ def replace_links(content):
         index += 1
         content = content + line + "\n"
     content = content + "</section>"
+    content = content.replace("</li>\n<li>", "</li><li>")
+    content = content.replace("<ul>\n<li>", "<ul><li>")
+    content = content.replace("</li>\n</ul>", "</li></ul>")
     return content
 
 def css_beautify(content):
