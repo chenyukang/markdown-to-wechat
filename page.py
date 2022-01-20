@@ -11,6 +11,7 @@ import urllib
 import markdown
 import os
 import sys
+from pathlib import Path
 from werobot import WeRoBot
 robot = WeRoBot()
 robot.config["APP_ID"] = os.getenv('WECHAT_APP_ID')
@@ -19,9 +20,11 @@ client = robot.client
 token = client.grant_token()
 
 def upload_image_from_path(image_path):
+  #print("upload_image_from_path: {}".format(image_path))
   media_json = client.upload_permanent_media("image", open(image_path, "rb")) ##永久素材
   media_id = media_json['media_id']
-  media_url = media_json['url']  
+  media_url = media_json['url']
+  #print("media_id: {}, media_url: {}".format(media_id, media_url))
   return media_id, media_url
 
 def upload_image(img_url):
@@ -34,6 +37,8 @@ def upload_image(img_url):
   resource = urllib.request.urlopen(img_url)
   name = img_url.split("/")[-1]
   f_name = "/tmp/{}".format(name)
+  if "." not in f_name:
+    f_name = f_name + ".png"
   with open(f_name, 'wb') as f:
     f.write(resource.read())
   return upload_image_from_path(f_name)
@@ -57,6 +62,7 @@ def fetch_attr(content, key):
     for line in lines:
         if line.startswith(key):
             return line.split(':')[1].strip()
+    return ""
 
 def render_markdown(content):
     exts = ['markdown.extensions.extra', 'markdown.extensions.codehilite',
@@ -123,6 +129,8 @@ def replace_links(content):
     content = content.replace("</li>\n<li>", "</li><li>")
     content = content.replace("<ul>\n<li>", "<ul><li>")
     content = content.replace("</li>\n</ul>", "</li></ul>")
+    content = content.replace("<ol>\n<li>", "<ol><li>")
+    content = content.replace("</li>\n</ol>" , "</li></ol>")
     return content
 
 def css_beautify(content):
@@ -134,20 +142,25 @@ def css_beautify(content):
     return content
 
 
-def upload_media_news(string_date, post_path):
+def upload_media_news(post_path):
     """
     上传到微信公众号素材
     """
-    string_date = datetime.strptime(string_date, '%Y%m%d')
-    print(string_date)
     content = open (post_path , 'r').read()
     TITLE = fetch_attr(content, 'title').strip('"').strip('\'')
     images = get_images_from_markdown(content)
     print(TITLE)
     print(images)
+    if len(images) == 0:
+        images.append('https://source.unsplash.com/random/600x400')
     uploaded_images = {}
     for image in images:
-        media_id, media_url = upload_image_from_path("./blog-source/source" + image)
+        media_id = ''
+        media_url = ''
+        if image.startswith("http"):
+            media_id, media_url = upload_image(image)
+        else:
+            media_id, media_url = upload_image_from_path("./blog-source/source" + image)
         uploaded_images[image] = [media_id, media_url]
     
     content = update_images_urls(content, uploaded_images)
@@ -157,13 +170,14 @@ def upload_media_news(string_date, post_path):
     RESULT = render_markdown(content)
     link = os.path.basename(post_path).replace('.md', '.html')
     date = fetch_attr(content, 'date').strip().strip('"').strip('\'').split( )[0].replace("-", "/")    
-    CONTENT_SOURCE_URL = 'https://catcoding.me/{}/{}'.format(date, link)    
+    digest = fetch_attr(content, 'subtitle').strip().strip('"').strip('\'')
+    CONTENT_SOURCE_URL = 'https://catcoding.me/{}/{}'.format(date, link)
 
     articles = [{
       "title": TITLE,
       "thumb_media_id": THUMB_MEDIA_ID,
       "author": AUTHOR,
-      "digest": '',
+      "digest": digest,
       "show_cover_pic": 1,
       "content": RESULT,
       "content_source_url": CONTENT_SOURCE_URL
@@ -181,17 +195,22 @@ def upload_media_news(string_date, post_path):
 
 def run(string_date):
     post_path = "./blog-source/source/_posts/fakerjs-is-deleted.md"
-    news_json = upload_media_news(string_date, post_path)
-    print(news_json);
-    print('successful')
+    print(string_date)
+    pathlist = Path("./blog-source/source/_posts").glob('**/*.md')
+    for path in pathlist:
+        path_str = str(path)
+        content = open (path_str , 'r').read()
+        date = fetch_attr(content, 'date').strip()
+        if string_date in date:
+            print(path_str)
+            news_json = upload_media_news(path_str)
+            print(news_json);
+            print('successful')
 
 if __name__ == '__main__':
     start_time = time.time() # 开始时间
     today = datetime.today() 
-    string_date = today.strftime('%Y%m%d')
-    try:
-        run(string_date)
-    except:
-        run(string_date)
+    string_date = today.strftime('%Y-%m-%d')
+    run(string_date)
     end_time = time.time() #结束时间
     print("程序耗时%f秒." % (end_time - start_time))
