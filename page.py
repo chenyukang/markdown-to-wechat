@@ -10,14 +10,40 @@ import time
 import urllib
 import markdown
 import os
-import sys
+import hashlib
 from pathlib import Path
 from werobot import WeRoBot
+from datetime import datetime
+
 robot = WeRoBot()
 robot.config["APP_ID"] = os.getenv('WECHAT_APP_ID')
 robot.config["APP_SECRET"] = os.getenv('WECHAT_APP_SECRET')
 client = robot.client
 token = client.grant_token()
+
+
+def file_digest(file_path):
+    """
+    计算文件的md5值
+    """
+    md5 = hashlib.md5()
+    with open(file_path, 'rb') as f:
+        md5.update(f.read())
+    return md5.hexdigest()
+
+def cache_update(file_path):
+    digest = file_digest(file_path)
+    updated = "{} - {} - {}\n".format(file_path, digest, datetime.now())
+    open("cache.txt", "a+").write(updated)
+
+def file_processed(file_path):
+    if not os.path.exists("cache.txt"):
+        return False
+    digest = file_digest(file_path)
+    cache = open("cache.txt", "r").read()
+    if digest in cache:
+        return True
+    return False
 
 def upload_image_from_path(image_path):
   #print("upload_image_from_path: {}".format(image_path))
@@ -95,7 +121,7 @@ def replace_header(content):
         l = line.strip()
         if l.startswith("<h") and l.endswith(">") > 0:
             tag = l.split(' ')[0].replace('<', '')
-            value = l.split('>')[1].split('<')[0]            
+            value = l.split('>')[1].split('<')[0]
             digit = tag[1]
             font =  (18 + (4 - int(tag[1])) * 2) if (digit >= '0' and digit <= '9') else 18
             new = "<{} style=\"margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: {}px;\"><span class=\"prefix\" style=\"display: none;\"></span><span class=\"content\">{}</span><span class=\"suffix\"></span></{}>".format(tag, font, value, tag)
@@ -130,14 +156,23 @@ def replace_links(content):
     content = content + "</section>"
     return content
 
+def fix_image(content):
+    pq = PyQuery(open('origi.html').read())
+    imgs = pq('img')
+    for line in imgs.items():
+        link = """<img alt="{}" src="{}" />""".format(line.attr('alt'), line.attr('src'))
+        figure = """<figure style="margin: 0; margin-bottom: 5px; display: flex; flex-direction: column; justify-content: center; align-items: center;">"""  + link + "</figure>"
+        content = content.replace(link, figure)
+    return content
 
 def format_fix(content):
     content = content.replace("</li>\n<li>", "</li><li>")
     content = content.replace("<ul>\n<li>", "<ul><li>")
     content = content.replace("</li>\n</ul>", "</li></ul>")
     content = content.replace("<ol>\n<li>", "<ol><li>")
-    content = content.replace("</li>\n</ol>" , "</li></ol>")
-    content = content.replace("class=\"codehilite\"", 
+    content = content.replace("</li>\n</ol>", "</li></ol>")
+    #content = content.replace("<pre>", """<pre class="custom" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background-color: black; height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: 5px; border-radius: 5px; background-position: 10px 10px;"></span>""")
+    content = content.replace("class=\"codehilite\"",
                               "class=\"codehilite\" style=\"background-color:bisque;\"")
     return content
 
@@ -147,6 +182,7 @@ def css_beautify(content):
     content = replace_header(content)
     content = replace_links(content)
     content = format_fix(content)
+    content = fix_image(content)
     content = header + content + "</section>"
     return content
 
@@ -171,14 +207,14 @@ def upload_media_news(post_path):
         else:
             media_id, media_url = upload_image_from_path("./blog-source/source" + image)
         uploaded_images[image] = [media_id, media_url]
-    
+
     content = update_images_urls(content, uploaded_images)
 
     THUMB_MEDIA_ID = (len(images) > 0 and uploaded_images[images[0]][0]) or ''
     AUTHOR = 'yukang'
     RESULT = render_markdown(content)
     link = os.path.basename(post_path).replace('.md', '.html')
-    date = fetch_attr(content, 'date').strip().strip('"').strip('\'').split( )[0].replace("-", "/")    
+    date = fetch_attr(content, 'date').strip().strip('"').strip('\'').split( )[0].replace("-", "/")
     digest = fetch_attr(content, 'subtitle').strip().strip('"').strip('\'')
     CONTENT_SOURCE_URL = 'https://catcoding.me/{}/{}'.format(date, link)
 
@@ -198,16 +234,20 @@ def upload_media_news(post_path):
     fp.write(RESULT)
     fp.close()
 
-    news_json = client.add_news(articles)    
+    news_json = client.add_news(articles)
     media_id = news_json['media_id']
+    cache_update(post_path)
     return news_json
 
 def run(string_date):
-    post_path = "./blog-source/source/_posts/fakerjs-is-deleted.md"
+    #post_path = "./blog-source/source/_posts/fakerjs-is-deleted.md"
     print(string_date)
     pathlist = Path("./blog-source/source/_posts").glob('**/*.md')
     for path in pathlist:
         path_str = str(path)
+        if file_processed(path_str):
+            print("{} has been processed".format(path_str))
+            continue
         content = open (path_str , 'r').read()
         date = fetch_attr(content, 'date').strip()
         if string_date in date:
@@ -218,7 +258,7 @@ def run(string_date):
 
 if __name__ == '__main__':
     start_time = time.time() # 开始时间
-    today = datetime.today() 
+    today = datetime.today()
     string_date = today.strftime('%Y-%m-%d')
     run(string_date)
     end_time = time.time() #结束时间
