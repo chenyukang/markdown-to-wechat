@@ -3,7 +3,7 @@
 """
 推送文章到微信公众号
 """
-from datetime import datetime ,timedelta
+from datetime import datetime
 from weakref import ref
 from pyquery import PyQuery
 import time
@@ -109,6 +109,8 @@ def replace_links(content):
     links = pq('a')
     refs = []
     index = 1
+    if len(links) == 0:
+        return content
     for l in links.items():
         new = "<span class=\"footnote-word\" style=\"color: #1e6bb8; font-weight: bold;\">{}</span><sup class=\"footnote-ref\" style=\"line-height: 0; color: #1e6bb8; font-weight: bold;\">[{}]</sup>".format(l.text(), index)
         index += 1
@@ -126,11 +128,17 @@ def replace_links(content):
         index += 1
         content = content + line + "\n"
     content = content + "</section>"
+    return content
+
+
+def format_fix(content):
     content = content.replace("</li>\n<li>", "</li><li>")
     content = content.replace("<ul>\n<li>", "<ul><li>")
     content = content.replace("</li>\n</ul>", "</li></ul>")
     content = content.replace("<ol>\n<li>", "<ol><li>")
     content = content.replace("</li>\n</ol>" , "</li></ol>")
+    content = content.replace("class=\"codehilite\"", 
+                              "class=\"codehilite\" style=\"background-color:bisque;\"")
     return content
 
 def css_beautify(content):
@@ -138,6 +146,7 @@ def css_beautify(content):
     content = replace_para(content)
     content = replace_header(content)
     content = replace_links(content)
+    content = format_fix(content)
     content = header + content + "</section>"
     return content
 
