@@ -2,3 +2,5 @@
 blog-source
 code2img
 cache.txt
+*.log
+update.sh

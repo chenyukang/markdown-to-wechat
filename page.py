@@ -1,8 +1,10 @@
+#!/usr/bin/python3
 ##public/upload_news.py
 # -*- coding: utf-8 -*-
 """
 推送文章到微信公众号
 """
+from calendar import c
 from datetime import datetime
 from weakref import ref
 from pyquery import PyQuery
@@ -15,12 +17,14 @@ from pathlib import Path
 from werobot import WeRoBot
 from datetime import datetime
 
-robot = WeRoBot()
-robot.config["APP_ID"] = os.getenv('WECHAT_APP_ID')
-robot.config["APP_SECRET"] = os.getenv('WECHAT_APP_SECRET')
-client = robot.client
-token = client.grant_token()
-
+def Client():
+    robot = WeRoBot()
+    robot.config["APP_ID"] = os.getenv('WECHAT_APP_ID')
+    robot.config["APP_SECRET"] = os.getenv('WECHAT_APP_SECRET')
+    print(robot.config["APP_SECRET"])
+    client = robot.client
+    token = client.grant_token()
+    return client
 
 def file_digest(file_path):
     """
@@ -47,7 +51,7 @@ def file_processed(file_path):
 
 def upload_image_from_path(image_path):
   #print("upload_image_from_path: {}".format(image_path))
-  media_json = client.upload_permanent_media("image", open(image_path, "rb")) ##永久素材
+  media_json = Client().upload_permanent_media("image", open(image_path, "rb")) ##永久素材
   media_id = media_json['media_id']
   media_url = media_json['url']
   #print("media_id: {}, media_url: {}".format(media_id, media_url))
@@ -145,7 +149,7 @@ def replace_links(content):
     for r in refs:
         orig = "<a href=\"{}\">{}</a>".format(r[0], r[1])
         content = content.replace(orig, r[2])
-    content = content + "\n" + """<h3 class="footnotes-sep" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 20px;"><span style="display: block;">参考资料</span></h3>\n"""
+    content = content + "\n" + """<h3 class="footnotes-sep" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 20px;"><span style="display: block;">参考:</span></h3>\n"""
     content = content + """<section class="footnotes">"""
     index = 1
     for r in refs:
@@ -234,7 +238,7 @@ def upload_media_news(post_path):
     fp.write(RESULT)
     fp.close()
 
-    news_json = client.add_news(articles)
+    news_json = Client().add_news(articles)
     media_id = news_json['media_id']
     cache_update(post_path)
     return news_json
@@ -258,6 +262,7 @@ def run(string_date):
 
 if __name__ == '__main__':
     start_time = time.time() # 开始时间
+    print("start time: {}".format(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")))
     today = datetime.today()
     string_date = today.strftime('%Y-%m-%d')
     run(string_date)
