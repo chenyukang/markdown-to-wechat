@@ -13,18 +13,41 @@ import urllib
 import markdown
 import os
 import hashlib
+import pickle
 from pathlib import Path
 from werobot import WeRoBot
 from datetime import datetime
+
+CACHE = {}
+
+CACHE_STORE = "cache.bin"
+
+def dump_cache():
+    fp = open(CACHE_STORE, "wb")
+    pickle.dump(CACHE, fp)
+
+def init_cache():
+    global CACHE
+    if os.path.exists(CACHE_STORE):
+        fp = open(CACHE_STORE, "rb")
+        CACHE = pickle.load(fp)
+        #print(CACHE)
+        return
+    dump_cache()
 
 def Client():
     robot = WeRoBot()
     robot.config["APP_ID"] = os.getenv('WECHAT_APP_ID')
     robot.config["APP_SECRET"] = os.getenv('WECHAT_APP_SECRET')
-    print(robot.config["APP_SECRET"])
+    #print(robot.config["APP_SECRET"])
     client = robot.client
     token = client.grant_token()
     return client
+
+def cache_get(key):
+    if key in CACHE:
+        return CACHE[key]
+    return None
 
 def file_digest(file_path):
     """
@@ -37,24 +60,25 @@ def file_digest(file_path):
 
 def cache_update(file_path):
     digest = file_digest(file_path)
-    updated = "{} - {} - {}\n".format(file_path, digest, datetime.now())
-    open("cache.txt", "a+").write(updated)
+    CACHE[digest] = "{}:{}".format(file_path, datetime.now())
+    dump_cache()
 
 def file_processed(file_path):
-    if not os.path.exists("cache.txt"):
-        return False
     digest = file_digest(file_path)
-    cache = open("cache.txt", "r").read()
-    if digest in cache:
-        return True
-    return False
+    return cache_get(digest) != None
 
 def upload_image_from_path(image_path):
   #print("upload_image_from_path: {}".format(image_path))
+  image_digest = file_digest(image_path)
+  res = cache_get(image_digest)
+  if res != None:
+      return res[0], res[1]
   media_json = Client().upload_permanent_media("image", open(image_path, "rb")) ##永久素材
   media_id = media_json['media_id']
   media_url = media_json['url']
-  #print("media_id: {}, media_url: {}".format(media_id, media_url))
+  CACHE[image_digest] = [media_id, media_url]
+  dump_cache()
+  print("file: {} => media_id: {}".format(image_path, media_id))
   return media_id, media_url
 
 def upload_image(img_url):
@@ -79,8 +103,7 @@ def get_images_from_markdown(content):
     for line in lines:
         line = line.strip()
         if line.startswith('![') and line.endswith(')'):
-            image = line.split(']')[0]
-            image = image[2:]
+            image = line.split('(')[1].split(')')[0].strip()
             images.append(image)
     return images
 
@@ -165,7 +188,8 @@ def fix_image(content):
     imgs = pq('img')
     for line in imgs.items():
         link = """<img alt="{}" src="{}" />""".format(line.attr('alt'), line.attr('src'))
-        figure = """<figure style="margin: 0; margin-bottom: 5px; display: flex; flex-direction: column; justify-content: center; align-items: center;">"""  + link + "</figure>"
+        caption = """\n<figcaption style="margin-top: 5px; text-align: center; color: #888; font-size: 14px;">{}</figcaption>\n""".format(line.attr('alt'))
+        figure = """<figure style="margin: 0; margin-bottom: 5px; display: flex; flex-direction: column; justify-content: center; align-items: center;">"""  + link + caption + "</figure>"
         content = content.replace(link, figure)
     return content
 
@@ -244,7 +268,7 @@ def upload_media_news(post_path):
     return news_json
 
 def run(string_date):
-    #post_path = "./blog-source/source/_posts/fakerjs-is-deleted.md"
+    #string_date = "2022-02-04"
     print(string_date)
     pathlist = Path("./blog-source/source/_posts").glob('**/*.md')
     for path in pathlist:
@@ -261,6 +285,7 @@ def run(string_date):
             print('successful')
 
 if __name__ == '__main__':
+    init_cache()
     start_time = time.time() # 开始时间
     print("start time: {}".format(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")))
     today = datetime.today()
