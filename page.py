@@ -45,9 +45,8 @@ def Client():
     return client
 
 def cache_get(key):
-    if key in CACHE:
-        return CACHE[key]
-    return None
+    return CACHE[key]
+
 
 def file_digest(file_path):
     """
@@ -241,10 +240,10 @@ def upload_media_news(post_path):
     THUMB_MEDIA_ID = (len(images) > 0 and uploaded_images[images[0]][0]) or ''
     AUTHOR = 'yukang'
     RESULT = render_markdown(content)
-    link = os.path.basename(post_path).replace('.md', '.html')
+    link = os.path.basename(post_path).replace('.md', '')
     date = fetch_attr(content, 'date').strip().strip('"').strip('\'').split( )[0].replace("-", "/")
     digest = fetch_attr(content, 'subtitle').strip().strip('"').strip('\'')
-    CONTENT_SOURCE_URL = 'https://catcoding.me/{}/{}'.format(date, link)
+    CONTENT_SOURCE_URL = 'https://catcoding.me/{}/p/{}'.format(date, link)
 
     articles = [{
       "title": TITLE,
