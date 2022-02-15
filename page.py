@@ -45,7 +45,9 @@ def Client():
     return client
 
 def cache_get(key):
-    return CACHE[key]
+    if key in CACHE:
+        return CACHE[key]
+    return None
 
 
 def file_digest(file_path):
