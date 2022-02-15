@@ -245,7 +245,7 @@ def upload_media_news(post_path):
     link = os.path.basename(post_path).replace('.md', '')
     date = fetch_attr(content, 'date').strip().strip('"').strip('\'').split( )[0].replace("-", "/")
     digest = fetch_attr(content, 'subtitle').strip().strip('"').strip('\'')
-    CONTENT_SOURCE_URL = 'https://catcoding.me/{}/p/{}'.format(date, link)
+    CONTENT_SOURCE_URL = 'https://catcoding.me/p/{}'.format(link)
 
     articles = [{
       "title": TITLE,
