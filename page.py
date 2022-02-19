@@ -17,6 +17,9 @@ import pickle
 from pathlib import Path
 from werobot import WeRoBot
 from datetime import datetime
+import requests
+import json
+import urllib.request
 
 CACHE = {}
 
@@ -35,6 +38,26 @@ def init_cache():
         return
     dump_cache()
 
+
+class NewClient:
+
+    def __init__(self):
+        self.__accessToken = ''
+        self.__leftTime = 0
+
+    def __real_get_access_token(self):
+        postUrl = ("https://api.weixin.qq.com/cgi-bin/token?grant_type="
+                   "client_credential&appid=%s&secret=%s" % (os.getenv('WECHAT_APP_ID'), os.getenv('WECHAT_APP_SECRET')))
+        urlResp = urllib.request.urlopen(postUrl)
+        urlResp = json.loads(urlResp.read())
+        self.__accessToken = urlResp['access_token']
+        self.__leftTime = urlResp['expires_in']
+
+    def get_access_token(self):
+        if self.__leftTime < 10:
+            self.__real_get_access_token()
+        return self.__accessToken
+
 def Client():
     robot = WeRoBot()
     robot.config["APP_ID"] = os.getenv('WECHAT_APP_ID')
@@ -42,7 +65,7 @@ def Client():
     #print(robot.config["APP_SECRET"])
     client = robot.client
     token = client.grant_token()
-    return client
+    return client, token
 
 def cache_get(key):
     if key in CACHE:
@@ -74,7 +97,8 @@ def upload_image_from_path(image_path):
   res = cache_get(image_digest)
   if res != None:
       return res[0], res[1]
-  media_json = Client().upload_permanent_media("image", open(image_path, "rb")) ##永久素材
+  client, _ = Client()
+  media_json = client.upload_permanent_media("image", open(image_path, "rb")) ##永久素材
   media_id = media_json['media_id']
   media_url = media_json['url']
   CACHE[image_digest] = [media_id, media_url]
@@ -247,26 +271,38 @@ def upload_media_news(post_path):
     digest = fetch_attr(content, 'subtitle').strip().strip('"').strip('\'')
     CONTENT_SOURCE_URL = 'https://catcoding.me/p/{}'.format(link)
 
-    articles = [{
-      "title": TITLE,
-      "thumb_media_id": THUMB_MEDIA_ID,
-      "author": AUTHOR,
-      "digest": digest,
-      "show_cover_pic": 1,
-      "content": RESULT,
-      "content_source_url": CONTENT_SOURCE_URL
+    articles = {
+        'articles':
+        [
+            {
+                "title": TITLE,
+                "thumb_media_id": THUMB_MEDIA_ID,
+                "author": AUTHOR,
+                "digest": digest,
+                "show_cover_pic": 1,
+                "content": RESULT,
+                "content_source_url": CONTENT_SOURCE_URL
+            }
+        # 若新增的是多图文素材，则此处应有几段articles结构，最多8段
+        ]
     }
-    # 若新增的是多图文素材，则此处应有几段articles结构，最多8段
-    ]
 
     fp = open('./result.html', 'w')
     fp.write(RESULT)
     fp.close()
 
-    news_json = Client().add_news(articles)
-    media_id = news_json['media_id']
+    client = NewClient()
+    token = client.get_access_token()
+    headers={'Content-type': 'text/plain; charset=utf-8'}
+    datas = json.dumps(articles, ensure_ascii=False).encode('utf-8')
+
+    postUrl = "https://api.weixin.qq.com/cgi-bin/draft/add?access_token=%s" % token
+    r = requests.post(postUrl, data=datas, headers=headers)
+    resp = json.loads(r.text)
+    print(resp)
+    media_id = resp['media_id']
     cache_update(post_path)
-    return news_json
+    return resp
 
 def run(string_date):
     #string_date = "2022-02-04"
