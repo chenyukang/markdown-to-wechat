@@ -6,6 +6,7 @@
 """
 from calendar import c
 from datetime import datetime
+from datetime import timedelta
 from weakref import ref
 from pyquery import PyQuery
 import time
@@ -16,7 +17,6 @@ import hashlib
 import pickle
 from pathlib import Path
 from werobot import WeRoBot
-from datetime import datetime
 import requests
 import json
 import urllib.request
@@ -324,9 +324,11 @@ def run(string_date):
 if __name__ == '__main__':
     init_cache()
     start_time = time.time() # 开始时间
-    print("start time: {}".format(datetime.now().strftime("%m/%d/%Y, %H:%M:%S")))
-    today = datetime.today()
-    string_date = today.strftime('%Y-%m-%d')
-    run(string_date)
+    times = [datetime.now(), datetime.now() - timedelta(days=1)]
+    for x in times:
+        print("start time: {}".format(x.strftime("%m/%d/%Y, %H:%M:%S")))
+        string_date = x.strftime('%Y-%m-%d')
+        print(string_date)
+        run(string_date)
     end_time = time.time() #结束时间
     print("程序耗时%f秒." % (end_time - start_time))
