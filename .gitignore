@@ -7,3 +7,4 @@ update.sh
 cache.bin
 ob
 ob-pub
+node_modules
