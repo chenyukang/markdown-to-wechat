@@ -219,7 +219,6 @@ def fix_image(content):
     return content
 
 def format_fix(content):
-    content = content.replace("</li>\n<li>", "</li><li>")
     content = content.replace("<ul>\n<li>", "<ul><li>")
     content = content.replace("</li>\n</ul>", "</li></ul>")
     content = content.replace("<ol>\n<li>", "<ol><li>")
