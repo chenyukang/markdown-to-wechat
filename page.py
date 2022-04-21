@@ -62,7 +62,6 @@ def Client():
     robot = WeRoBot()
     robot.config["APP_ID"] = os.getenv('WECHAT_APP_ID')
     robot.config["APP_SECRET"] = os.getenv('WECHAT_APP_SECRET')
-    #print(robot.config["APP_SECRET"])
     client = robot.client
     token = client.grant_token()
     return client, token
@@ -245,10 +244,12 @@ def upload_media_news(post_path):
     """
     content = open (post_path , 'r').read()
     TITLE = fetch_attr(content, 'title').strip('"').strip('\'')
+    gen_cover = fetch_attr(content, 'cover').strip('"')
     images = get_images_from_markdown(content)
     print(TITLE)
     print(images)
-    if len(images) == 0:
+    print("gen_cover: ", gen_cover)
+    if len(images) == 0 or gen_cover == "true" :
         images.append('https://source.unsplash.com/random/600x400')
     uploaded_images = {}
     for image in images:
@@ -266,7 +267,6 @@ def upload_media_news(post_path):
     AUTHOR = 'yukang'
     RESULT = render_markdown(content)
     link = os.path.basename(post_path).replace('.md', '')
-    date = fetch_attr(content, 'date').strip().strip('"').strip('\'').split( )[0].replace("-", "/")
     digest = fetch_attr(content, 'subtitle').strip().strip('"').strip('\'')
     CONTENT_SOURCE_URL = 'https://catcoding.me/p/{}'.format(link)
 
