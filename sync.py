@@ -172,7 +172,6 @@ def replace_para(content):
     return "\n".join(res)
 
 def gen_css(path, *args):
-    print(args)
     tmpl = open("./assets/{}.tmpl".format(path), "r").read()
     return tmpl.format(*args)
 
@@ -252,8 +251,6 @@ def upload_media_news(post_path):
     gen_cover = fetch_attr(content, 'gen_cover').strip('"')
     images = get_images_from_markdown(content)
     print(TITLE)
-    print(images)
-    print("gen_cover: ", gen_cover)
     if len(images) == 0 or gen_cover == "true" :
         images = ['https://source.unsplash.com/random/600x400'] + images
     uploaded_images = {}
