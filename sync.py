@@ -92,7 +92,6 @@ def file_processed(file_path):
     return cache_get(digest) != None
 
 def upload_image_from_path(image_path):
-  #print("upload_image_from_path: {}".format(image_path))
   image_digest = file_digest(image_path)
   res = cache_get(image_digest)
   if res != None:
@@ -143,7 +142,10 @@ def fetch_attr(content, key):
     return ""
 
 def render_markdown(content):
-    exts = ['markdown.extensions.extra', 'markdown.extensions.tables','markdown.extensions.toc', codehilite.makeExtension(
+    exts = ['markdown.extensions.extra', 
+            'markdown.extensions.tables',
+            'markdown.extensions.toc', 
+            codehilite.makeExtension(
                 guess_lang=False,
                 noclasses=True,
                 pygments_style='monokai'
@@ -162,13 +164,17 @@ def update_images_urls(content, uploaded_images):
     return content
 
 def replace_para(content):
-    new = """<p style="font-size: 16px; padding-top: 8px; padding-bottom: 8px; margin: 0; line-height: 26px; color: rgb(89,89,89);">"""
     res = []
     for line in content.split("\n"):
         if line.startswith("<p>"):
-            line = line.replace("<p>", new)
+            line = line.replace("<p>", gen_css("para"))
         res.append(line)
     return "\n".join(res)
+
+def gen_css(path, *args):
+    print(args)
+    tmpl = open("./assets/{}.tmpl".format(path), "r").read()
+    return tmpl.format(*args)
 
 def replace_header(content):
     res = []
@@ -179,8 +185,7 @@ def replace_header(content):
             value = l.split('>')[1].split('<')[0]
             digit = tag[1]
             font =  (18 + (4 - int(tag[1])) * 2) if (digit >= '0' and digit <= '9') else 18
-            new = "<{} style=\"margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: {}px;\"><span class=\"prefix\" style=\"display: none;\"></span><span class=\"content\">{}</span><span class=\"suffix\"></span></{}>".format(tag, font, value, tag)
-            res.append(new)
+            res.append(gen_css("sub", tag, font, value, tag))
         else:
             res.append(line)
     return "\n".join(res)
@@ -193,21 +198,21 @@ def replace_links(content):
     if len(links) == 0:
         return content
     for l in links.items():
-        new = "<span class=\"footnote-word\" style=\"color: #1e6bb8; font-weight: bold;\">{}</span><sup class=\"footnote-ref\" style=\"line-height: 0; color: #1e6bb8; font-weight: bold;\">[{}]</sup>".format(l.text(), index)
+        link = gen_css("link", l.text(), index)
         index += 1
-        refs.append([l.attr('href'), l.text(), new])
+        refs.append([l.attr('href'), l.text(), link])
 
     for r in refs:
         orig = "<a href=\"{}\">{}</a>".format(r[0], r[1])
         content = content.replace(orig, r[2])
-    content = content + "\n" + """<h3 class="footnotes-sep" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 20px;"><span style="display: block;">参考:</span></h3>\n"""
+    content = content + "\n" + gen_css("ref_header")
     content = content + """<section class="footnotes">"""
     index = 1
     for r in refs:
         l = r[2]
-        line = "<span id=\"fn1\" class=\"footnote-item\" style=\"display: flex;\"><span class=\"footnote-num\" style=\"display: inline; width: 10%; background: none; font-size: 80%; opacity: 0.6; line-height: 26px; font-family: ptima-Regular, Optima, PingFangSC-light, PingFangTC-light, 'PingFang SC', Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;\">[{}] </span><p style=\"padding-top: 8px; padding-bottom: 8px; display: inline; font-size: 14px; width: 90%; padding: 0px; margin: 0; line-height: 26px; color: black; word-break: break-all; width: calc(100%-50);\">&nbsp{}: <em style=\"font-style: italic; color: black;\">{}</em></p>".format(index, r[1], r[0])
+        line = gen_css("ref_link", index, r[1], r[0])
         index += 1
-        content = content + line + "\n"
+        content += line + "\n"
     content = content + "</section>"
     return content
 
@@ -216,8 +221,7 @@ def fix_image(content):
     imgs = pq('img')
     for line in imgs.items():
         link = """<img alt="{}" src="{}" />""".format(line.attr('alt'), line.attr('src'))
-        caption = """\n<figcaption style="margin-top: 5px; text-align: center; color: #888; font-size: 14px;">{}</figcaption>\n""".format(line.attr('alt'))
-        figure = """<figure style="margin: 0; margin-bottom: 5px; display: flex; flex-direction: column; justify-content: center; align-items: center;">"""  + link + caption + "</figure>"
+        figure = gen_css("figure", link, line.attr('alt'))
         content = content.replace(link, figure)
     return content
 
@@ -226,18 +230,16 @@ def format_fix(content):
     content = content.replace("</li>\n</ul>", "</li></ul>")
     content = content.replace("<ol>\n<li>", "<ol><li>")
     content = content.replace("</li>\n</ol>", "</li></ol>")
-    content = content.replace("class=\"codehilite\" style=\"background: #272822\"",
-                              "class=\"codehilite\" style=\"background: #272822; border-radius: 3px; word-wrap: break-word; overflow: scroll; padding: 12px 13px; font-size: 13px;\"")
+    content = content.replace("background: #272822", gen_css("code"))
     return content
 
 def css_beautify(content):
-    header = """<section id="nice" style="font-size: 16px; color: black; padding: 0 10px; line-height: 1.6; word-spacing: 0px; letter-spacing: 0px; word-break: break-word; word-wrap: break-word; text-align: left; font-family: Optima-Regular, Optima, PingFangSC-light, PingFangTC-light, 'PingFang SC', Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;">"""
     content = replace_para(content)
     content = replace_header(content)
     content = replace_links(content)
     content = format_fix(content)
     content = fix_image(content)
-    content = header + content + "</section>"
+    content = gen_css("header") + content + "</section>"
     return content
 
 
@@ -285,7 +287,7 @@ def upload_media_news(post_path):
                 "content": RESULT,
                 "content_source_url": CONTENT_SOURCE_URL
             }
-        # 若新增的是多图文素材，则此处应有几段articles结构，最多8段
+            # 若新增的是多图文素材，则此处应有几段articles结构，最多8段
         ]
     }
 
