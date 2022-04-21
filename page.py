@@ -12,6 +12,7 @@ from pyquery import PyQuery
 import time
 import urllib
 import markdown
+from markdown.extensions import codehilite
 import os
 import hashlib
 import pickle
@@ -142,8 +143,11 @@ def fetch_attr(content, key):
     return ""
 
 def render_markdown(content):
-    exts = ['markdown.extensions.extra', 'markdown.extensions.codehilite',
-            'markdown.extensions.tables','markdown.extensions.toc']
+    exts = ['markdown.extensions.extra', 'markdown.extensions.tables','markdown.extensions.toc', codehilite.makeExtension(
+                guess_lang=False,
+                noclasses=True,
+                pygments_style='monokai'
+            ),]
     post =  "".join(content.split("---\n")[2:])
     html = markdown.markdown(post, extensions=exts)
     open("origi.html", "w").write(html)
@@ -222,9 +226,8 @@ def format_fix(content):
     content = content.replace("</li>\n</ul>", "</li></ul>")
     content = content.replace("<ol>\n<li>", "<ol><li>")
     content = content.replace("</li>\n</ol>", "</li></ol>")
-    #content = content.replace("<pre>", """<pre class="custom" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background-color: black; height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: 5px; border-radius: 5px; background-position: 10px 10px;"></span>""")
-    content = content.replace("class=\"codehilite\"",
-                              "class=\"codehilite\" style=\"background-color:bisque;\"")
+    content = content.replace("class=\"codehilite\" style=\"background: #272822\"",
+                              "class=\"codehilite\" style=\"background: #272822; border-radius: 3px; word-wrap: break-word; overflow: scroll; padding: 12px 13px; font-size: 13px;\"")
     return content
 
 def css_beautify(content):
@@ -244,13 +247,13 @@ def upload_media_news(post_path):
     """
     content = open (post_path , 'r').read()
     TITLE = fetch_attr(content, 'title').strip('"').strip('\'')
-    gen_cover = fetch_attr(content, 'cover').strip('"')
+    gen_cover = fetch_attr(content, 'gen_cover').strip('"')
     images = get_images_from_markdown(content)
     print(TITLE)
     print(images)
     print("gen_cover: ", gen_cover)
     if len(images) == 0 or gen_cover == "true" :
-        images.append('https://source.unsplash.com/random/600x400')
+        images = ['https://source.unsplash.com/random/600x400'] + images
     uploaded_images = {}
     for image in images:
         media_id = ''
