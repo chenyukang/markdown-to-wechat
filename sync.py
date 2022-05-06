@@ -230,6 +230,7 @@ def format_fix(content):
     content = content.replace("<ol>\n<li>", "<ol><li>")
     content = content.replace("</li>\n</ol>", "</li></ol>")
     content = content.replace("background: #272822", gen_css("code"))
+    content = content.replace("""<pre style="line-height: 125%">""", """<pre style="line-height: 125%; color: white; font-size: 11px;">""")
     return content
 
 def css_beautify(content):
