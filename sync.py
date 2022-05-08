@@ -145,6 +145,7 @@ def render_markdown(content):
     exts = ['markdown.extensions.extra', 
             'markdown.extensions.tables',
             'markdown.extensions.toc', 
+            'markdown.extensions.sane_lists',
             codehilite.makeExtension(
                 guess_lang=False,
                 noclasses=True,
