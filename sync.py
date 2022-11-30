@@ -10,6 +10,7 @@ from datetime import timedelta
 from weakref import ref
 from pyquery import PyQuery
 import time
+import html
 import urllib
 import markdown
 from markdown.extensions import codehilite
@@ -21,6 +22,8 @@ from werobot import WeRoBot
 import requests
 import json
 import urllib.request
+import random
+import string
 
 CACHE = {}
 
@@ -97,13 +100,18 @@ def upload_image_from_path(image_path):
   if res != None:
       return res[0], res[1]
   client, _ = Client()
-  media_json = client.upload_permanent_media("image", open(image_path, "rb")) ##永久素材
-  media_id = media_json['media_id']
-  media_url = media_json['url']
-  CACHE[image_digest] = [media_id, media_url]
-  dump_cache()
-  print("file: {} => media_id: {}".format(image_path, media_id))
-  return media_id, media_url
+  print("uploading image {}".format(image_path))
+  try:
+    media_json = client.upload_permanent_media("image", open(image_path, "rb")) ##永久素材
+    media_id = media_json['media_id']
+    media_url = media_json['url']
+    CACHE[image_digest] = [media_id, media_url]
+    dump_cache()
+    print("file: {} => media_id: {}".format(image_path, media_id))
+    return media_id, media_url
+  except Exception as e:
+    print("upload image error: {}".format(e))
+    return None, None
 
 def upload_image(img_url):
   """
@@ -203,7 +211,8 @@ def replace_links(content):
         refs.append([l.attr('href'), l.text(), link])
 
     for r in refs:
-        orig = "<a href=\"{}\">{}</a>".format(r[0], r[1])
+        orig = "<a href=\"{}\">{}</a>".format(html.escape(r[0]), r[1])
+        print(orig)
         content = content.replace(orig, r[2])
     content = content + "\n" + gen_css("ref_header")
     content = content + """<section class="footnotes">"""
@@ -254,7 +263,10 @@ def upload_media_news(post_path):
     images = get_images_from_markdown(content)
     print(TITLE)
     if len(images) == 0 or gen_cover == "true" :
-        images = ['https://source.unsplash.com/random/600x400'] + images
+        letters = string.ascii_lowercase
+        seed = ''.join(random.choice(letters) for i in range(10))
+        print(seed)
+        images = ["https://picsum.photos/seed/" + seed + "/400/600"] + images
     uploaded_images = {}
     for image in images:
         media_id = ''
@@ -263,7 +275,8 @@ def upload_media_news(post_path):
             media_id, media_url = upload_image(image)
         else:
             media_id, media_url = upload_image_from_path("./blog-source/source" + image)
-        uploaded_images[image] = [media_id, media_url]
+        if media_id != None:
+            uploaded_images[image] = [media_id, media_url]
 
     content = update_images_urls(content, uploaded_images)
 
