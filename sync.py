@@ -9,6 +9,7 @@ from datetime import datetime
 from datetime import timedelta
 from weakref import ref
 from pyquery import PyQuery
+from datetime import date, timedelta
 import time
 import html
 import urllib
@@ -321,27 +322,31 @@ def upload_media_news(post_path):
     return resp
 
 def run(string_date):
-    #string_date = "2022-02-04"
+    #string_date = "2023-03-13"
     print(string_date)
     pathlist = Path("./blog-source/source/_posts").glob('**/*.md')
     for path in pathlist:
         path_str = str(path)
-        if file_processed(path_str):
-            print("{} has been processed".format(path_str))
-            continue
         content = open (path_str , 'r').read()
         date = fetch_attr(content, 'date').strip()
         if string_date in date:
+            if file_processed(path_str):
+                print("{} has been processed".format(path_str))
+                continue
             print(path_str)
             news_json = upload_media_news(path_str)
             print(news_json);
             print('successful')
 
+def daterange(start_date, end_date):
+    for n in range(int((end_date - start_date).days)):
+        yield start_date + timedelta(n)
+
 if __name__ == '__main__':
+    print("begin sync to wechat")
     init_cache()
     start_time = time.time() # 开始时间
-    times = [datetime.now(), datetime.now() - timedelta(days=1)]
-    for x in times:
+    for x in daterange(datetime.now() - timedelta(days=7), datetime.now()):
         print("start time: {}".format(x.strftime("%m/%d/%Y, %H:%M:%S")))
         string_date = x.strftime('%Y-%m-%d')
         print(string_date)
