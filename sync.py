@@ -346,7 +346,7 @@ if __name__ == '__main__':
     print("begin sync to wechat")
     init_cache()
     start_time = time.time() # 开始时间
-    for x in daterange(datetime.now() - timedelta(days=7), datetime.now()):
+    for x in daterange(datetime.now() - timedelta(days=7), datetime.now() + timedelta(days=2)):
         print("start time: {}".format(x.strftime("%m/%d/%Y, %H:%M:%S")))
         string_date = x.strftime('%Y-%m-%d')
         print(string_date)
