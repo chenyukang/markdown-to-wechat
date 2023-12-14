@@ -116,7 +116,7 @@ def upload_image_from_path(image_path):
 
 def upload_image(img_url):
   """
-  * 上传临时素菜
+  * 上传临时素材
   * 1、临时素材media_id是可复用的。
   * 2、媒体文件在微信后台保存时间为3天，即3天后media_id失效。
   * 3、上传临时素材的格式、大小限制与公众平台官网一致。
